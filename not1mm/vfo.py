@@ -137,7 +137,7 @@ class VfoWindow(QDockWidget):
             if "usb-Raspberry_Pi_Pico" in device:
                 try:
                     with serial.Serial("/dev/serial/by-id/" + device, 115200) as ser:
-                        ser.timeout = 1000
+                        ser.timeout = 1.0
                         ser.write(b"whatareyou\r")
                         data = ser.readline()
                 except serial.serialutil.SerialException:
@@ -173,7 +173,7 @@ class VfoWindow(QDockWidget):
         if device is not None:
             try:
                 self.pico: serial.Serial = serial.Serial(device, 115200)
-                self.pico.timeout = 100
+                self.pico.timeout = 1.0
                 self.lcdNumber.setStyleSheet("QLCDNumber { color: white; }")
                 self.device_reconnect: bool = True
             except OSError:
@@ -234,7 +234,7 @@ class VfoWindow(QDockWidget):
             if self.rig_control.online is True:
                 try:
                     vfo: int = int(self.rig_control.get_vfo())
-                except ValueError:
+                except (ValueError, ConnectionRefusedError, TimeoutError, OSError):
                     return
                 # if vfo < 1700000 or vfo > 60000000:
                 #     return
