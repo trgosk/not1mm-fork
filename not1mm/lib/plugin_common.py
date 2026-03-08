@@ -476,6 +476,10 @@ def imp_adif(self):
 
         if q.get("STATIONPREFIX"):
             this_contact["StationPrefix"] = q.get("STATIONPREFIX")
+        elif q.get("STATION_CALLSIGN"):
+            this_contact["StationPrefix"] = q.get("STATION_CALLSIGN")
+        else:
+            this_contact["StationPrefix"] = self.station.get("Call", "")
 
         if q.get("QTH"):
             this_contact["QTH"] = q.get("QTH")
