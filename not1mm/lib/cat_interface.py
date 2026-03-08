@@ -30,6 +30,23 @@ if __name__ == "__main__":
 logger = logging.getLogger("cat_interface")
 
 
+class TimeoutTransport(xmlrpc.client.Transport):
+    """XML-RPC Transport with a configurable socket timeout.
+
+    Prevents the application from freezing indefinitely when the
+    radio or flrig becomes unreachable (e.g. disconnected USB cable).
+    """
+
+    def __init__(self, timeout: float = 5.0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.timeout = timeout
+
+    def make_connection(self, host):
+        conn = super().make_connection(host)
+        conn.timeout = self.timeout
+        return conn
+
+
 class CAT:
     """CAT control rigctld or flrig"""
 
@@ -89,7 +106,9 @@ class CAT:
 
             target = f"http://{self.host}:{self.port}"
             logger.debug("%s", target)
-            self.server = xmlrpc.client.ServerProxy(target)
+            self.server = xmlrpc.client.ServerProxy(
+                target, transport=TimeoutTransport(timeout=5)
+            )
             self.online = True
             try:
                 _ = self.server.main.get_version()
