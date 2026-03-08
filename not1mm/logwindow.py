@@ -177,8 +177,6 @@ class LogWindow(QDockWidget):
         self.get_log()
         self.generalLog.resizeColumnsToContents()
         self.generalLog.resizeRowsToContents()
-        self.focusedLog.resizeColumnsToContents()
-        self.focusedLog.resizeRowsToContents()
 
         cmd = {}
         cmd["cmd"] = "GETCOLUMNS"
@@ -924,8 +922,6 @@ class LogWindow(QDockWidget):
 
         self.generalLog.resizeColumnsToContents()
         self.generalLog.resizeRowsToContents()
-        self.focusedLog.resizeColumnsToContents()
-        self.focusedLog.resizeRowsToContents()
         self.generalLog.blockSignals(False)
         self.focusedLog.blockSignals(False)
 
