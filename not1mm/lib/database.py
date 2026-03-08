@@ -1215,7 +1215,13 @@ class DataBase:
                 conn.row_factory = self.row_factory
                 cursor = conn.cursor()
                 cursor.execute(
-                    f"select * from dxlog where call like '%{call}%' and ContestNR = {self.current_contest} order by TS ASC;"
+                    "select TS, Call, Freq, Mode, SNT, RCV, SentNr, NR, "
+                    "Exchange1, CK, Prec, Sect, WPXPrefix, Power, "
+                    "IsMultiplier1, ZN, IsMultiplier2, CountryPrefix, "
+                    "Points, Name, Comment, ID, Operator "
+                    "from dxlog where Call like ? "
+                    "and ContestNR = ? order by TS ASC LIMIT 100;",
+                    (f"%{call}%", self.current_contest),
                 )
                 return cursor.fetchall()
         except sqlite3.OperationalError as exception:
@@ -1301,7 +1307,9 @@ class DataBase:
                 conn.row_factory = self.row_factory
                 cursor = conn.cursor()
                 cursor.execute(
-                    f"select call, band from DXLOG where call like '%{call}%' and ContestNR = {self.current_contest};"
+                    "select call, band from DXLOG where call like ? "
+                    "and ContestNR = ? LIMIT 100;",
+                    (f"%{call}%", self.current_contest),
                 )
                 result = cursor.fetchall()
                 worked_list = {}
