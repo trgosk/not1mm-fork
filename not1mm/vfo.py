@@ -55,9 +55,6 @@ class VfoWindow(QDockWidget):
         self.lcdNumber.display(0)
         self.pico: serial.Serial | None = None
         self.setup_serial()
-        self.poll_rig_timer: QTimer = QTimer()
-        self.poll_rig_timer.timeout.connect(self.poll_radio)
-        self.poll_rig_timer.start(500)
         self.visibilityChanged.connect(self.window_state_changed)
         self.usb_devices = set()
 
@@ -137,7 +134,7 @@ class VfoWindow(QDockWidget):
             if "usb-Raspberry_Pi_Pico" in device:
                 try:
                     with serial.Serial("/dev/serial/by-id/" + device, 115200) as ser:
-                        ser.timeout = 1000
+                        ser.timeout = 1.0
                         ser.write(b"whatareyou\r")
                         data = ser.readline()
                 except serial.serialutil.SerialException:
@@ -173,7 +170,7 @@ class VfoWindow(QDockWidget):
         if device is not None:
             try:
                 self.pico: serial.Serial = serial.Serial(device, 115200)
-                self.pico.timeout = 100
+                self.pico.timeout = 1.0
                 self.lcdNumber.setStyleSheet("QLCDNumber { color: white; }")
                 self.device_reconnect: bool = True
             except OSError:
@@ -219,38 +216,33 @@ class VfoWindow(QDockWidget):
             dnum: str = f"{dvfo[:len(dvfo)-6]}.{dvfo[-6:-3]}.{dvfo[-3:]}"
             self.lcdNumber.display(dnum)
 
-    def poll_radio(self) -> None:
+    def update_vfo(self, vfo: str) -> None:
         """
-        Poll radio via CAT asking for VFO state.
-        If it's with in the HAM bands set the vfo knob to match the radio.
+        Called by __main__.py to forward VFO frequency from the Radio thread.
+        Updates the LCD display and the physical VFO knob (if connected).
+        Respects the 'stale' guard to avoid overwriting knob-driven changes.
         """
         if not self.isVisible():
             return
         if datetime.datetime.now() < self.stale:
             return
-        if self.rig_control is not None:
-            if self.rig_control.online is False:
-                self.rig_control.reinit()
-            if self.rig_control.online is True:
-                try:
-                    vfo: int = int(self.rig_control.get_vfo())
-                except ValueError:
-                    return
-                # if vfo < 1700000 or vfo > 60000000:
-                #     return
-                if vfo != self.old_vfo or self.device_reconnect is True:
-                    self.old_vfo: int = vfo
-                    logger.debug(f"{vfo}")
-                    self.showNumber(vfo)
-                    cmd: str = f"F {vfo}\r"
-                    self.device_reconnect = False
-                    try:
-                        if self.pico is not None:
-                            self.pico.write(cmd.encode())
-                    except OSError:
-                        logger.critical("Unable to write to serial device.")
-                    except AttributeError:
-                        logger.critical("Unable to write to serial device.")
+        try:
+            vfo_int: int = int(vfo)
+        except (ValueError, TypeError):
+            return
+        if vfo_int != self.old_vfo or self.device_reconnect is True:
+            self.old_vfo: int = vfo_int
+            logger.debug(f"{vfo_int}")
+            self.showNumber(vfo_int)
+            cmd: str = f"F {vfo_int}\r"
+            self.device_reconnect = False
+            try:
+                if self.pico is not None:
+                    self.pico.write(cmd.encode())
+            except OSError:
+                logger.critical("Unable to write to serial device.")
+            except AttributeError:
+                logger.critical("Unable to write to serial device.")
 
     def getwaiting(self) -> None:
         """
