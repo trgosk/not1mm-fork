@@ -5,6 +5,7 @@ Email: michael.bridak@gmail.com
 GPL V3
 Purpose: Provides main logging window and a crap ton more.
 """
+
 # pylint: disable=unused-import, c-extension-no-member, no-member, invalid-name, too-many-lines, no-name-in-module
 # pylint: disable=logging-fstring-interpolation, logging-not-lazy, line-too-long, bare-except
 
@@ -202,6 +203,9 @@ class MainWindow(QtWidgets.QMainWindow):
     voice_thread = QThread()
     rtc_thread = QThread()
 
+    _callsign_debounce_timer = None
+    _pending_callsign = ""
+
     rig_control = None
     log_window = None
     check_window = None
@@ -299,6 +303,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.server_message_watch_timer = QtCore.QTimer()
         self.server_message_watch_timer.timeout.connect(self.check_udp_queue)
         self.server_message_watch_timer.start(1000)
+
+        self._callsign_debounce_timer = QtCore.QTimer()
+        self._callsign_debounce_timer.setSingleShot(True)
+        self._callsign_debounce_timer.setInterval(150)  # 150ms debounce
+        self._callsign_debounce_timer.timeout.connect(self._callsign_lookup)
+
         self.inputs_dict = {
             self.callsign: "callsign",
             self.sent: "sent",
@@ -4272,6 +4282,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 if "CQ WW" in self.contest.name or "IARU HF" in self.contest.name:
                     self.contest.prefill(self)
             return
+        # Store pending call and restart debounce timer for expensive lookups
+        self._pending_callsign = stripped_text
+        self._callsign_debounce_timer.start()
+
+    def _callsign_lookup(self) -> None:
+        """Debounced handler for expensive callsign lookups.
+
+        This is called after a short delay (150ms) from the last keystroke
+        to avoid running expensive DB queries and UI updates on every single
+        keystroke when typing quickly.
+        """
+        stripped_text = self._pending_callsign
         cmd = {}
         cmd["cmd"] = "CALLCHANGED"
         cmd["call"] = stripped_text
@@ -4535,8 +4557,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if not hasattr(self.contest, "check_dupe"):
                     result = self.contest.specific_contest_check_dupe(self, call)
 
-            debugline = f"{result}"
-            logger.debug("%s", debugline)
+            logger.debug("%s", result)
 
             self.contact_is_dupe = result.get("isdupe", False)
             if bool(result.get("isdupe", False)) is not False:
@@ -4602,7 +4623,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def new_rov(self):
         if self.rover_dialog.NewLocation.text():
             self.RoverLocation = self.rover_dialog.NewLocation.text().upper()
-            logger.debug("New RoverLocation: %s", self.RoverLocation) 
+            logger.debug("New RoverLocation: %s", self.RoverLocation)
         self.rover_dialog.close()
 
     def get_opon(self) -> None:
@@ -4728,6 +4749,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if vfo == "":
             return
+        if self.vfo_window:
+            self.vfo_window.update_vfo(vfo)
         if self.radio_state.get("vfoa") != vfo:
             info_dirty = True
             self.radio_state["vfoa"] = vfo

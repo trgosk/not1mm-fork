@@ -948,8 +948,8 @@ class LogWindow(QDockWidget):
             self.focusedLog.blockSignals(False)
             return
         lines = self.database.fetch_like_calls(call)
-        debug_line = f"{lines}"
-        logger.debug(debug_line)
+        logger.debug("%s", lines)
+        self.focusedLog.setUpdatesEnabled(False)
         self.focusedLog.setRowCount(0)
         for log_item in lines:
             number_of_rows = self.focusedLog.rowCount()
@@ -1091,8 +1091,7 @@ class LogWindow(QDockWidget):
                 QtWidgets.QTableWidgetItem(str(log_item.get("Operator", ""))),
             )
 
-        self.focusedLog.resizeColumnsToContents()
-        self.focusedLog.resizeRowsToContents()
+        self.focusedLog.setUpdatesEnabled(True)
         self.focusedLog.blockSignals(False)
 
     def show_message_box(self, message: str) -> None:
